@@ -1,7 +1,11 @@
 # pyquerybuilder/query/analyzers/field_analyzer.py
 """Analyzer for field references in queries."""
 from typing import Dict, List, Any, Set
-from .field_resolver import resolve_field  # Import the correct function
+
+from query.analyzers.field_resolver import resolve_field
+
+
+#from .field_resolver import resolve_field  # Import the correct function
 
 
 def analyze_fields(select_fields, schema_registry):
