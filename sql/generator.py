@@ -26,13 +26,10 @@ class SQLGenerator:
         )
 
         # Handle either from_table or from_subquery
-        from_spec = analyzed_query.get("from_subquery", analyzed_query.get("from_table", {}))
-
-        from_clause = generate_from(from_spec)
-
-        # from_clause = generate_from(
-        #     analyzed_query.get("from_table", {})
-        # )
+        if analyzed_query.get("from_subquery"):
+            from_clause = generate_from(analyzed_query["from_subquery"])
+        else:
+            from_clause = generate_from(analyzed_query.get("from_table", {}))
 
         join_clause = generate_joins(
             analyzed_query.get("joins", [])
