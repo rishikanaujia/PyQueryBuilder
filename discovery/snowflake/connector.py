@@ -30,3 +30,33 @@ class SnowflakeConnector:
                 schema=self.schema
             )
         return self._connection
+
+    def execute_query(self, sql, params=None):
+        """Execute a SQL query and return results.
+
+        Args:
+            sql: SQL query string
+            params: Optional parameters dictionary
+
+        Returns:
+            List of dictionaries with query results
+        """
+        conn = self.connect()
+        cursor = conn.cursor()
+
+        try:
+            # Execute query
+            cursor.execute(sql, params or {})
+
+            # Fetch column names
+            column_names = [desc[0] for desc in cursor.description]
+
+            # Fetch and process results
+            results = []
+            for row in cursor.fetchall():
+                result = dict(zip(column_names, row))
+                results.append(result)
+
+            return results
+        finally:
+            cursor.close()
