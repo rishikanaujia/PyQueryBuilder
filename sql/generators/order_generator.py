@@ -4,14 +4,7 @@ from typing import List, Dict, Any
 
 
 def generate_order_by(order_specs):
-    """Generate an ORDER BY clause.
-
-    Args:
-        order_specs: List of dictionaries with field and direction
-
-    Returns:
-        ORDER BY clause string
-    """
+    """Generate an ORDER BY clause."""
     if not order_specs:
         return ""
 
@@ -21,10 +14,48 @@ def generate_order_by(order_specs):
         field = spec["field"]
         direction = spec.get("direction", "ASC").upper()
 
+        # Handle function objects
+        if hasattr(field, 'get_sql'):
+            field_sql = field.get_sql()
+        else:
+            field_sql = str(field)
+
         # Validate direction
         if direction not in ("ASC", "DESC"):
             direction = "ASC"
 
-        order_parts.append(f"{field} {direction}")
+        order_parts.append(f"{field_sql} {direction}")
 
     return "ORDER BY " + ", ".join(order_parts)
+
+
+# # pyquerybuilder/sql/generators/order_generator.py
+# """Generator for ORDER BY clause in SQL queries."""
+# from typing import List, Dict, Any
+#
+#
+# def generate_order_by(order_specs):
+#     """Generate an ORDER BY clause.
+#
+#     Args:
+#         order_specs: List of dictionaries with field and direction
+#
+#     Returns:
+#         ORDER BY clause string
+#     """
+#     if not order_specs:
+#         return ""
+#
+#     order_parts = []
+#
+#     for spec in order_specs:
+#         field = spec["field"]
+#         direction = spec.get("direction", "ASC").upper()
+#
+#         # Validate direction
+#         if direction not in ("ASC", "DESC"):
+#             direction = "ASC"
+#
+#         order_parts.append(f"{field} {direction}")
+#
+#     return "ORDER BY " + ", ".join(order_parts)
