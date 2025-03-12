@@ -1,6 +1,5 @@
 # pyquerybuilder/sql/generator.py
 """Generator for producing SQL from analyzed queries."""
-from typing import Dict, List, Tuple, Any
 
 from .generators.select_generator import generate_select
 from .generators.from_generator import generate_from
@@ -26,9 +25,14 @@ class SQLGenerator:
             analyzed_query.get("select_fields", [])
         )
 
-        from_clause = generate_from(
-            analyzed_query.get("from_table", {})
-        )
+        # Handle either from_table or from_subquery
+        from_spec = analyzed_query.get("from_subquery", analyzed_query.get("from_table", {}))
+
+        from_clause = generate_from(from_spec)
+
+        # from_clause = generate_from(
+        #     analyzed_query.get("from_table", {})
+        # )
 
         join_clause = generate_joins(
             analyzed_query.get("joins", [])
@@ -61,8 +65,6 @@ class SQLGenerator:
         sql = " ".join(part for part in sql_parts if part)
 
         return sql, params
-
-
 
 # # pyquerybuilder/sql/generator.py
 # """Generator for producing SQL from analyzed queries."""

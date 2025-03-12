@@ -13,12 +13,34 @@ class QueryAnalyzer:
         """Initialize with schema registry."""
         self.schema_registry = schema_registry
 
-    def analyze(self, select_fields, from_table, joins=None,
-                where_conditions=None, group_by=None,
+    def analyze(self, select_fields, from_table=None, from_subquery=None,
+                joins=None, where_conditions=None, group_by=None,
                 order_by=None, limit=None, offset=None):
-        """Analyze and validate query components."""
-        # Process FROM table and extract alias if present
-        from_info = self._process_from_table(from_table)
+        """Analyze and validate query components.
+
+        Args:
+            select_fields: List of fields to select
+            from_table: Main table in FROM clause
+            from_subquery: Subquery in FROM clause
+            joins: List of join specifications
+            where_conditions: List of WHERE conditions
+            group_by: List of GROUP BY fields
+            order_by: List of ORDER BY specifications
+            limit: LIMIT value
+            offset: OFFSET value
+
+        Returns:
+            Dictionary of analyzed query components
+        """
+        # Either from_table or from_subquery must be provided
+        if from_table:
+            from_info = self._process_from_table(from_table)
+            from_subquery_info = None
+        elif from_subquery:
+            from_info = None
+            from_subquery_info = from_subquery
+        else:
+            raise ValueError("Either from_table or from_subquery must be provided")
 
         # Process field references and determine requirements
         field_analysis = analyze_fields(
@@ -26,10 +48,15 @@ class QueryAnalyzer:
         )
 
         # Resolve and validate joins
-        join_analysis = analyze_joins(
-            from_info, joins or [], field_analysis["required_tables"],
-            self.schema_registry
-        )
+        if from_info:
+            join_analysis = analyze_joins(
+                from_info, joins or [], field_analysis["required_tables"],
+                self.schema_registry
+            )
+        else:
+            # With a subquery, we may not be able to auto-resolve joins
+            # So we just pass through the joins as specified
+            join_analysis = {"resolved_joins": joins or []}
 
         # Process where conditions
         analyzed_where = self._analyze_where_conditions(
@@ -50,6 +77,7 @@ class QueryAnalyzer:
         return {
             "select_fields": field_analysis["field_info"],
             "from_table": from_info,
+            "from_subquery": from_subquery_info,
             "joins": join_analysis["resolved_joins"],
             "where_conditions": analyzed_where,
             "group_by": analyzed_group_by,
@@ -58,85 +86,112 @@ class QueryAnalyzer:
             "offset": offset
         }
 
-    # ... existing methods ...
+    def _process_from_table(self, from_table):
+        """Process the FROM table specification.
+
+        Args:
+            from_table: Table name (can include alias)
+
+        Returns:
+            Dictionary with table name and alias
+        """
+        # Check if table has alias
+        if isinstance(from_table, str):
+            if " as " in from_table.lower():
+                table, alias = from_table.lower().split(" as ", 1)
+                return {"table": table.strip(), "alias": alias.strip()}
+            elif " AS " in from_table:
+                table, alias = from_table.split(" AS ", 1)
+                return {"table": table.strip(), "alias": alias.strip()}
+            else:
+                # No alias specified
+                return {"table": from_table.strip()}
+        else:
+            # Already a dictionary or a subquery object
+            return from_table
+
+    def _analyze_where_conditions(self, where_conditions):
+        """Analyze and validate WHERE conditions.
+
+        Args:
+            where_conditions: List of condition dictionaries
+
+        Returns:
+            Processed list of conditions
+        """
+        analyzed_conditions = []
+
+        for condition in where_conditions:
+            # Handle function objects in field or value
+            field = condition.get("field")
+            value = condition.get("value")
+
+            # Clone the condition to avoid modifying the original
+            analyzed_condition = condition.copy()
+
+            # Handle field references, functions, etc.
+            if hasattr(field, 'get_sql'):
+                # Field is already a function or other SQL-generating object
+                pass
+            elif isinstance(field, str):
+                # For string fields, could resolve table/field references
+                # This is optional and can be expanded later
+                pass
+
+            analyzed_conditions.append(analyzed_condition)
+
+        return analyzed_conditions
 
     def _analyze_group_by(self, group_by_fields):
-        """Analyze and validate GROUP BY fields."""
-        # Simply pass through for now, could add validation later
-        return group_by_fields
+        """Analyze and validate GROUP BY fields.
+
+        Args:
+            group_by_fields: List of fields to group by
+
+        Returns:
+            Processed list of GROUP BY fields
+        """
+        analyzed_fields = []
+
+        for field in group_by_fields:
+            # Handle function objects
+            if hasattr(field, 'get_sql'):
+                analyzed_fields.append(field)
+            else:
+                # For string fields, could resolve table/field references
+                # This is optional and can be expanded later
+                analyzed_fields.append(field)
+
+        return analyzed_fields
 
     def _analyze_order_by(self, order_by_specs):
-        """Analyze and validate ORDER BY specifications."""
-        # Simply pass through for now, could add validation later
-        return order_by_specs
+        """Analyze and validate ORDER BY specifications.
 
+        Args:
+            order_by_specs: List of ORDER BY specifications
 
-# # pyquerybuilder/query/analyzer.py
-# """Analyzer for validating and preparing queries."""
-# from typing import Dict, List, Any, Optional
-#
-# from .analyzers.field_analyzer import analyze_fields
-# from .analyzers.join_analyzer import analyze_joins
-#
-#
-# class QueryAnalyzer:
-#     """Analyzes query components and resolves dependencies."""
-#
-#     def __init__(self, schema_registry):
-#         """Initialize with schema registry."""
-#         self.schema_registry = schema_registry
-#
-#     def analyze(self, select_fields, from_table, joins=None,
-#                 where_conditions=None, group_by=None,
-#                 order_by=None, limit=None, offset=None):
-#         """Analyze and validate query components."""
-#         # Process FROM table and extract alias if present
-#         from_info = self._process_from_table(from_table)
-#
-#         # Process field references and determine requirements
-#         field_analysis = analyze_fields(
-#             select_fields, self.schema_registry
-#         )
-#
-#         # Resolve and validate joins
-#         join_analysis = analyze_joins(
-#             from_info, joins or [], field_analysis["required_tables"],
-#             self.schema_registry
-#         )
-#
-#         # Process where conditions
-#         analyzed_where = self._analyze_where_conditions(
-#             where_conditions or []
-#         )
-#
-#         # Return analyzed query components
-#         return {
-#             "select_fields": field_analysis["field_info"],
-#             "from_table": from_info,
-#             "joins": join_analysis["resolved_joins"],
-#             "where_conditions": analyzed_where,
-#             "group_by": group_by or [],
-#             "order_by": order_by or [],
-#             "limit": limit,
-#             "offset": offset
-#         }
-#
-#     def _process_from_table(self, from_table):
-#         """Process the FROM table specification."""
-#         # Check if table has alias
-#         if " as " in from_table.lower():
-#             table, alias = from_table.lower().split(" as ", 1)
-#             return {"table": table.strip(), "alias": alias.strip()}
-#         elif " AS " in from_table:
-#             table, alias = from_table.split(" AS ", 1)
-#             return {"table": table.strip(), "alias": alias.strip()}
-#         else:
-#             # No alias specified
-#             return {"table": from_table.strip()}
-#
-#     def _analyze_where_conditions(self, where_conditions):
-#         """Analyze and validate WHERE conditions."""
-#         # For now, just pass through the conditions
-#         # In a more complex implementation, we could validate
-#         # field references here as well
-#         return where_conditions
+        Returns:
+            Processed list of ORDER BY specifications
+        """
+        analyzed_specs = []
+
+        for spec in order_by_specs:
+            # Handle function objects in field
+            field = spec.get("field")
+            direction = spec.get("direction", "asc")
+
+            # Clone the spec to avoid modifying the original
+            analyzed_spec = spec.copy()
+
+            # Handle field references, functions, etc.
+            if hasattr(field, 'get_sql'):
+                # Field is already a function or other SQL-generating object
+                pass
+            elif isinstance(field, str):
+                # For string fields, could resolve table/field references
+                # This is optional and can be expanded later
+                pass
+
+            analyzed_specs.append(analyzed_spec)
+
+        return analyzed_specs

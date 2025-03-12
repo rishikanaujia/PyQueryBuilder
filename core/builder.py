@@ -83,6 +83,72 @@ class QueryBuilder:
         })
         return self
 
+    # pyquerybuilder/core/builder.py
+    # Add these methods to the QueryBuilder class
+
+    def as_subquery(self, alias: Optional[str] = None) -> "Subquery":
+        """Convert this query to a subquery that can be used in another query.
+
+        Args:
+            alias: Optional alias for the subquery
+
+        Returns:
+            Subquery object
+        """
+        from .subquery import Subquery
+        return Subquery(self, alias)
+
+    def from_subquery(self, subquery, alias: Optional[str] = None) -> "QueryBuilder":
+        """Set a subquery as the FROM clause.
+
+        Args:
+            subquery: QueryBuilder instance or Subquery
+            alias: Optional alias for the subquery
+
+        Returns:
+            Self for method chaining
+        """
+        # If it's a QueryBuilder, convert to Subquery
+        from .subquery import Subquery
+        if isinstance(subquery, QueryBuilder) and not isinstance(subquery, Subquery):
+            subquery = subquery.as_subquery(alias)
+        elif alias and hasattr(subquery, 'as_'):
+            subquery = subquery.as_(alias)
+
+        # Store the subquery as the FROM source
+        self._from_subquery = subquery
+        self._from_table = None  # Clear any existing FROM table
+
+        return self
+
+    # pyquerybuilder/core/builder.py
+    # Update the build method
+
+    def build(self) -> Tuple[str, Dict[str, Any]]:
+        """Build the SQL query and parameter dictionary."""
+        from ..query.analyzer import QueryAnalyzer
+        from ..sql.generator import SQLGenerator
+
+        # Analyze the query to resolve joins and validate fields
+        analyzer = QueryAnalyzer(self._schema_registry)
+        analyzed_query = analyzer.analyze(
+            select_fields=self._select_fields,
+            from_table=self._from_table,
+            from_subquery=self._from_subquery,
+            joins=self._joins,
+            where_conditions=self._where_conditions,
+            group_by=self._group_by,
+            order_by=self._order_by,
+            limit=self._limit,
+            offset=self._offset
+        )
+
+        # Generate SQL from the analyzed query
+        generator = SQLGenerator(dialect="snowflake")
+        sql, params = generator.generate(analyzed_query)
+
+        return sql, params
+
 
 
 
