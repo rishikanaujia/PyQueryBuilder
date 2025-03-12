@@ -149,6 +149,32 @@ class QueryBuilder:
 
         return sql, params
 
+    # pyquerybuilder/core/builder.py
+    # Add or update these methods
+
+    def from_(self, source) -> 'QueryBuilder':
+        """Set the source for the FROM clause, which can be a table or subquery.
+
+        Args:
+            source: Table name, subquery, or QueryBuilder instance
+
+        Returns:
+            Self for method chaining
+        """
+        from .subquery import Subquery
+
+        # Handle QueryBuilder as subquery
+        if isinstance(source, QueryBuilder) and not isinstance(source, Subquery):
+            return self.from_subquery(source)
+
+        # Handle existing Subquery object
+        elif hasattr(source, 'get_sql'):
+            return self.from_subquery(source)
+
+        # Handle table name (string)
+        else:
+            return self.from_table(source)
+
 
 
 
