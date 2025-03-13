@@ -2,6 +2,65 @@
 
 A dynamic SQL query builder with automatic schema discovery for Snowflake.
 
+## dir
+
+pyquerybuilder/
+├── __init__.py                # Package exports
+├── core/
+│   ├── __init__.py            # Core module exports
+│   ├── builder.py             # Main QueryBuilder class
+│   ├── executor.py            # Query execution handling
+│   ├── subquery.py            # Subquery support
+│   └── set_operation.py       # Set operations (UNION, INTERSECT, etc.)
+├── discovery/
+│   ├── __init__.py            # Discovery module exports
+│   ├── metadata_inspector.py  # Main schema discovery coordinator
+│   └── snowflake/
+│       ├── __init__.py
+│       ├── connector.py       # Snowflake connection management
+│       └── schema_reader.py   # Snowflake schema reading functions
+├── schema/
+│   ├── __init__.py            # Schema module exports
+│   ├── registry.py            # Schema information registry
+│   ├── join_builder.py        # Join path building
+│   └── alias_generator.py     # Table alias generation
+├── query/
+│   ├── __init__.py            # Query module exports
+│   ├── analyzer.py            # Query analysis coordinator
+│   ├── where_group.py         # Complex WHERE clause support
+│   └── analyzers/
+│       ├── __init__.py
+│       ├── field_analyzer.py  # Field usage analysis
+│       ├── field_resolver.py  # Field name resolution
+│       ├── alias_resolver.py  # Table alias resolution
+│       ├── join_analyzer.py   # Join requirement analysis
+│       ├── join_resolver.py   # Join path resolution
+│       └── join_path_finder.py # Finding join paths
+├── sql/
+│   ├── __init__.py            # SQL module exports
+│   ├── generator.py           # SQL generation coordination
+│   ├── functions/
+│   │   ├── __init__.py        # Function namespace exports
+│   │   ├── base_function.py   # Base Function class
+│   │   ├── aggregate_functions.py # SUM, COUNT, etc.
+│   │   ├── date_functions.py  # Date/time functions
+│   │   ├── string_functions.py # String manipulation
+│   │   ├── window_functions.py # Window functions (RANK, etc.)
+│   │   └── window_frames.py   # Window frame definitions
+│   └── generators/
+│       ├── __init__.py
+│       ├── select_generator.py # SELECT clause generation
+│       ├── from_generator.py  # FROM clause generation
+│       ├── join_generator.py  # JOIN clause generation
+│       ├── where_generator.py # WHERE clause generation
+│       ├── group_generator.py # GROUP BY generation
+│       └── order_generator.py # ORDER BY generation
+└── utils/
+    ├── __init__.py            # Utilities exports
+    ├── errors.py              # Error handling classes
+    ├── validation.py          # Input validation
+    └── formatting.py          # SQL text formatting
+
 ## Overview
 
 PyQueryBuilder is a Python library that simplifies writing SQL queries for Snowflake databases. It features automatic schema discovery, which means you don't need to manually define the database schema - PyQueryBuilder will detect tables, columns, and relationships automatically.
