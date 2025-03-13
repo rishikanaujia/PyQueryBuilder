@@ -2,6 +2,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from discovery.snowflake.metadata_inspector import MetadataInspector
+from query.where_group import WhereGroup
 from ..sql.functions import fn
 
 
@@ -176,146 +177,204 @@ class QueryBuilder:
         else:
             return self.from_table(source)
 
-        # pyquerybuilder/core/builder.py
-        # Add these imports and methods
+    from ..query.where_group import WhereGroup
 
-        from ..query.where_group import WhereGroup
+    # Add these methods to the QueryBuilder class
+    def where(self, field, operator=None, value=None):
+        """Add a WHERE condition to the query.
 
-        # Add these methods to the QueryBuilder class
-        def where(self, field, operator=None, value=None):
-            """Add a WHERE condition to the query.
+        This method can be called in three ways:
+        1. where(field, operator, value)
+        2. where(field, value) - with implied "=" operator
+        3. where(where_group) - with a WhereGroup object
 
-            This method can be called in three ways:
-            1. where(field, operator, value)
-            2. where(field, value) - with implied "=" operator
-            3. where(where_group) - with a WhereGroup object
+        Args:
+            field: Field name, function, or WhereGroup
+            operator: Comparison operator or value (if value is None)
+            value: Value to compare against
 
-            Args:
-                field: Field name, function, or WhereGroup
-                operator: Comparison operator or value (if value is None)
-                value: Value to compare against
-
-            Returns:
-                Self for method chaining
-            """
-            # Handle WhereGroup
-            if isinstance(field, WhereGroup):
-                self._where_groups.append(field)
-                return self
-
-            # Handle normal condition
-            if value is None and operator is not None:
-                # Shift parameters for convenience
-                value = operator
-                operator = "="
-
-            self._where_conditions.append({
-                "field": field,
-                "operator": operator,
-                "value": value
-            })
+        Returns:
+            Self for method chaining
+        """
+        # Handle WhereGroup
+        if isinstance(field, WhereGroup):
+            self._where_groups.append(field)
             return self
 
-        def or_where(self, field, operator=None, value=None):
-            """Add a WHERE condition with OR logic.
+        # Handle normal condition
+        if value is None and operator is not None:
+            # Shift parameters for convenience
+            value = operator
+            operator = "="
 
-            Args:
-                field: Field name, function, or WhereGroup
-                operator: Comparison operator or value (if value is None)
-                value: Value to compare against
+        self._where_conditions.append({
+            "field": field,
+            "operator": operator,
+            "value": value
+        })
+        return self
 
-            Returns:
-                Self for method chaining
-            """
-            # Handle WhereGroup
-            if isinstance(field, WhereGroup):
-                field._is_or = True
-                self._where_groups.append(field)
-                return self
+    def or_where(self, field, operator=None, value=None):
+        """Add a WHERE condition with OR logic.
 
-            # Handle normal condition
-            if value is None and operator is not None:
-                # Shift parameters for convenience
-                value = operator
-                operator = "="
+        Args:
+            field: Field name, function, or WhereGroup
+            operator: Comparison operator or value (if value is None)
+            value: Value to compare against
 
-            self._where_conditions.append({
-                "field": field,
-                "operator": operator,
-                "value": value,
-                "logic": "OR"
-            })
+        Returns:
+            Self for method chaining
+        """
+        # Handle WhereGroup
+        if isinstance(field, WhereGroup):
+            field._is_or = True
+            self._where_groups.append(field)
             return self
 
-        def where_in(self, field, values):
-            """Add a WHERE IN condition.
+        # Handle normal condition
+        if value is None and operator is not None:
+            # Shift parameters for convenience
+            value = operator
+            operator = "="
 
-            Args:
-                field: Field name or function
-                values: List of values or subquery
+        self._where_conditions.append({
+            "field": field,
+            "operator": operator,
+            "value": value,
+            "logic": "OR"
+        })
+        return self
 
-            Returns:
-                Self for method chaining
-            """
-            self._where_conditions.append({
-                "field": field,
-                "operator": "IN",
-                "value": values
-            })
-            return self
+    def where_in(self, field, values):
+        """Add a WHERE IN condition.
 
-        def where_not_in(self, field, values):
-            """Add a WHERE NOT IN condition.
+        Args:
+            field: Field name or function
+            values: List of values or subquery
 
-            Args:
-                field: Field name or function
-                values: List of values or subquery
+        Returns:
+            Self for method chaining
+        """
+        self._where_conditions.append({
+            "field": field,
+            "operator": "IN",
+            "value": values
+        })
+        return self
 
-            Returns:
-                Self for method chaining
-            """
-            self._where_conditions.append({
-                "field": field,
-                "operator": "NOT IN",
-                "value": values
-            })
-            return self
+    def where_not_in(self, field, values):
+        """Add a WHERE NOT IN condition.
 
-        def where_between(self, field, start, end):
-            """Add a WHERE BETWEEN condition.
+        Args:
+            field: Field name or function
+            values: List of values or subquery
 
-            Args:
-                field: Field name or function
-                start: Lower bound
-                end: Upper bound
+        Returns:
+            Self for method chaining
+        """
+        self._where_conditions.append({
+            "field": field,
+            "operator": "NOT IN",
+            "value": values
+        })
+        return self
 
-            Returns:
-                Self for method chaining
-            """
-            self._where_conditions.append({
-                "field": field,
-                "operator": "BETWEEN",
-                "value": (start, end)
-            })
-            return self
+    def where_between(self, field, start, end):
+        """Add a WHERE BETWEEN condition.
 
-        def where_not_between(self, field, start, end):
-            """Add a WHERE NOT BETWEEN condition.
+        Args:
+            field: Field name or function
+            start: Lower bound
+            end: Upper bound
 
-            Args:
-                field: Field name or function
-                start: Lower bound
-                end: Upper bound
+        Returns:
+            Self for method chaining
+        """
+        self._where_conditions.append({
+            "field": field,
+            "operator": "BETWEEN",
+            "value": (start, end)
+        })
+        return self
 
-            Returns:
-                Self for method chaining
-            """
-            self._where_conditions.append({
-                "field": field,
-                "operator": "NOT BETWEEN",
-                "value": (start, end)
-            })
-            return self
+    def where_not_between(self, field, start, end):
+        """Add a WHERE NOT BETWEEN condition.
+
+        Args:
+            field: Field name or function
+            start: Lower bound
+            end: Upper bound
+
+        Returns:
+            Self for method chaining
+        """
+        self._where_conditions.append({
+            "field": field,
+            "operator": "NOT BETWEEN",
+            "value": (start, end)
+        })
+        return self
+
+    # pyquerybuilder/core/builder.py
+    # Add these imports at the top
+    from .set_operation import SetOperation, SetOperationType
+
+    # Add these methods to the QueryBuilder class
+
+    def union(self, other_query):
+        """Create a UNION with another query.
+
+        Args:
+            other_query: Another QueryBuilder instance
+
+        Returns:
+            SetOperation object
+        """
+        return SetOperation(self, SetOperationType.UNION, other_query)
+
+    def union_all(self, other_query):
+        """Create a UNION ALL with another query.
+
+        Args:
+            other_query: Another QueryBuilder instance
+
+        Returns:
+            SetOperation object
+        """
+        return SetOperation(self, SetOperationType.UNION_ALL, other_query)
+
+    def intersect(self, other_query):
+        """Create an INTERSECT with another query.
+
+        Args:
+            other_query: Another QueryBuilder instance
+
+        Returns:
+            SetOperation object
+        """
+        return SetOperation(self, SetOperationType.INTERSECT, other_query)
+
+    def except_(self, other_query):
+        """Create an EXCEPT with another query.
+
+        Args:
+            other_query: Another QueryBuilder instance
+
+        Returns:
+            SetOperation object
+        """
+        return SetOperation(self, SetOperationType.EXCEPT, other_query)
+
+    def minus(self, other_query):
+        """Create a MINUS with another query (Oracle's EXCEPT).
+
+        Args:
+            other_query: Another QueryBuilder instance
+
+        Returns:
+            SetOperation object
+        """
+        return SetOperation(self, SetOperationType.MINUS, other_query)
 
 
 
