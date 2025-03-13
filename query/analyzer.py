@@ -14,24 +14,9 @@ class QueryAnalyzer:
         self.schema_registry = schema_registry
 
     def analyze(self, select_fields, from_table=None, from_subquery=None,
-                joins=None, where_conditions=None, group_by=None,
-                order_by=None, limit=None, offset=None):
-        """Analyze and validate query components.
-
-        Args:
-            select_fields: List of fields to select
-            from_table: Main table in FROM clause
-            from_subquery: Subquery in FROM clause
-            joins: List of join specifications
-            where_conditions: List of WHERE conditions
-            group_by: List of GROUP BY fields
-            order_by: List of ORDER BY specifications
-            limit: LIMIT value
-            offset: OFFSET value
-
-        Returns:
-            Dictionary of analyzed query components
-        """
+                joins=None, where_conditions=None, where_groups=None,
+                group_by=None, order_by=None, limit=None, offset=None):
+        """Analyze and validate query components."""
         # Either from_table or from_subquery must be provided
         if from_table:
             from_info = self._process_from_table(from_table)
@@ -55,7 +40,6 @@ class QueryAnalyzer:
             )
         else:
             # With a subquery, we may not be able to auto-resolve joins
-            # So we just pass through the joins as specified
             join_analysis = {"resolved_joins": joins or []}
 
         # Process where conditions
@@ -63,14 +47,9 @@ class QueryAnalyzer:
             where_conditions or []
         )
 
-        # Process group by fields
-        analyzed_group_by = self._analyze_group_by(
-            group_by or []
-        )
-
-        # Process order by specifications
-        analyzed_order_by = self._analyze_order_by(
-            order_by or []
+        # Process where groups - added this line
+        analyzed_where_groups = self._analyze_where_groups(
+            where_groups or []
         )
 
         # Return analyzed query components
@@ -80,8 +59,9 @@ class QueryAnalyzer:
             "from_subquery": from_subquery_info,
             "joins": join_analysis["resolved_joins"],
             "where_conditions": analyzed_where,
-            "group_by": analyzed_group_by,
-            "order_by": analyzed_order_by,
+            "where_groups": analyzed_where_groups,  # Added this line
+            "group_by": self._analyze_group_by(group_by or []),
+            "order_by": self._analyze_order_by(order_by or []),
             "limit": limit,
             "offset": offset
         }
@@ -195,3 +175,18 @@ class QueryAnalyzer:
             analyzed_specs.append(analyzed_spec)
 
         return analyzed_specs
+
+    # Add this method to the QueryAnalyzer class
+    def _analyze_where_groups(self, where_groups):
+        """Analyze and validate WHERE groups.
+
+        Args:
+            where_groups: List of WhereGroup instances
+
+        Returns:
+            Processed list of WHERE groups
+        """
+        # For now, just pass through the groups
+        # In a more complex implementation, we could validate
+        # field references and extract table dependencies
+        return where_groups
