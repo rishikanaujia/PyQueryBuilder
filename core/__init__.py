@@ -9,9 +9,10 @@ def __init__(self, schema_registry, connector=None):
     # Query components
     self._select_fields = []
     self._from_table = None
-    self._from_subquery = None  # New field for subqueries
+    self._from_subquery = None
     self._joins = []
     self._where_conditions = []
+    self._where_groups = []  # Added this line
     self._group_by = []
     self._order_by = []
     self._limit = None

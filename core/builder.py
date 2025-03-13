@@ -129,7 +129,7 @@ class QueryBuilder:
         from ..query.analyzer import QueryAnalyzer
         from ..sql.generator import SQLGenerator
 
-        # Analyze the query to resolve joins and validate fields
+        # Analyze the query
         analyzer = QueryAnalyzer(self._schema_registry)
         analyzed_query = analyzer.analyze(
             select_fields=self._select_fields,
@@ -137,13 +137,14 @@ class QueryBuilder:
             from_subquery=self._from_subquery,
             joins=self._joins,
             where_conditions=self._where_conditions,
+            where_groups=self._where_groups,  # Added this line
             group_by=self._group_by,
             order_by=self._order_by,
             limit=self._limit,
             offset=self._offset
         )
 
-        # Generate SQL from the analyzed query
+        # Generate SQL
         generator = SQLGenerator(dialect="snowflake")
         sql, params = generator.generate(analyzed_query)
 
@@ -174,6 +175,147 @@ class QueryBuilder:
         # Handle table name (string)
         else:
             return self.from_table(source)
+
+        # pyquerybuilder/core/builder.py
+        # Add these imports and methods
+
+        from ..query.where_group import WhereGroup
+
+        # Add these methods to the QueryBuilder class
+        def where(self, field, operator=None, value=None):
+            """Add a WHERE condition to the query.
+
+            This method can be called in three ways:
+            1. where(field, operator, value)
+            2. where(field, value) - with implied "=" operator
+            3. where(where_group) - with a WhereGroup object
+
+            Args:
+                field: Field name, function, or WhereGroup
+                operator: Comparison operator or value (if value is None)
+                value: Value to compare against
+
+            Returns:
+                Self for method chaining
+            """
+            # Handle WhereGroup
+            if isinstance(field, WhereGroup):
+                self._where_groups.append(field)
+                return self
+
+            # Handle normal condition
+            if value is None and operator is not None:
+                # Shift parameters for convenience
+                value = operator
+                operator = "="
+
+            self._where_conditions.append({
+                "field": field,
+                "operator": operator,
+                "value": value
+            })
+            return self
+
+        def or_where(self, field, operator=None, value=None):
+            """Add a WHERE condition with OR logic.
+
+            Args:
+                field: Field name, function, or WhereGroup
+                operator: Comparison operator or value (if value is None)
+                value: Value to compare against
+
+            Returns:
+                Self for method chaining
+            """
+            # Handle WhereGroup
+            if isinstance(field, WhereGroup):
+                field._is_or = True
+                self._where_groups.append(field)
+                return self
+
+            # Handle normal condition
+            if value is None and operator is not None:
+                # Shift parameters for convenience
+                value = operator
+                operator = "="
+
+            self._where_conditions.append({
+                "field": field,
+                "operator": operator,
+                "value": value,
+                "logic": "OR"
+            })
+            return self
+
+        def where_in(self, field, values):
+            """Add a WHERE IN condition.
+
+            Args:
+                field: Field name or function
+                values: List of values or subquery
+
+            Returns:
+                Self for method chaining
+            """
+            self._where_conditions.append({
+                "field": field,
+                "operator": "IN",
+                "value": values
+            })
+            return self
+
+        def where_not_in(self, field, values):
+            """Add a WHERE NOT IN condition.
+
+            Args:
+                field: Field name or function
+                values: List of values or subquery
+
+            Returns:
+                Self for method chaining
+            """
+            self._where_conditions.append({
+                "field": field,
+                "operator": "NOT IN",
+                "value": values
+            })
+            return self
+
+        def where_between(self, field, start, end):
+            """Add a WHERE BETWEEN condition.
+
+            Args:
+                field: Field name or function
+                start: Lower bound
+                end: Upper bound
+
+            Returns:
+                Self for method chaining
+            """
+            self._where_conditions.append({
+                "field": field,
+                "operator": "BETWEEN",
+                "value": (start, end)
+            })
+            return self
+
+        def where_not_between(self, field, start, end):
+            """Add a WHERE NOT BETWEEN condition.
+
+            Args:
+                field: Field name or function
+                start: Lower bound
+                end: Upper bound
+
+            Returns:
+                Self for method chaining
+            """
+            self._where_conditions.append({
+                "field": field,
+                "operator": "NOT BETWEEN",
+                "value": (start, end)
+            })
+            return self
 
 
 

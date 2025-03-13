@@ -36,7 +36,8 @@ class SQLGenerator:
         )
 
         where_clause, where_params = generate_where(
-            analyzed_query.get("where_conditions", [])
+            analyzed_query.get("where_conditions", []),
+            analyzed_query.get("where_groups", [])  # Added this line
         )
         params.update(where_params)
 
@@ -48,7 +49,7 @@ class SQLGenerator:
             analyzed_query.get("order_by", [])
         )
 
-        # Combine all clauses
+        # Build final SQL
         sql_parts = [
             select_clause,
             from_clause,
@@ -58,7 +59,6 @@ class SQLGenerator:
             order_clause
         ]
 
-        # Build final SQL string
         sql = " ".join(part for part in sql_parts if part)
 
         return sql, params
