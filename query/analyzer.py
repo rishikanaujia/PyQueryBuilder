@@ -15,7 +15,8 @@ class QueryAnalyzer:
 
     def analyze(self, select_fields, from_table=None, from_subquery=None,
                 joins=None, where_conditions=None, where_groups=None,
-                group_by=None, order_by=None, limit=None, offset=None):
+                group_by=None, order_by=None, limit=None, offset=None,
+                with_ctes=None):
         """Analyze and validate query components."""
         # Either from_table or from_subquery must be provided
         if from_table:
@@ -59,11 +60,12 @@ class QueryAnalyzer:
             "from_subquery": from_subquery_info,
             "joins": join_analysis["resolved_joins"],
             "where_conditions": analyzed_where,
-            "where_groups": analyzed_where_groups,  # Added this line
+            "where_groups": analyzed_where_groups,
             "group_by": self._analyze_group_by(group_by or []),
             "order_by": self._analyze_order_by(order_by or []),
             "limit": limit,
-            "offset": offset
+            "offset": offset,
+            "with_ctes": with_ctes or []  # Add this line
         }
 
     def _process_from_table(self, from_table):

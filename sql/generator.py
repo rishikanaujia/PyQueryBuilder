@@ -7,6 +7,8 @@ from .generators.join_generator import generate_joins
 from .generators.where_generator import generate_where
 from .generators.group_generator import generate_group_by
 from .generators.order_generator import generate_order_by
+from .generators.with_generator import generate_with
+
 
 
 class SQLGenerator:
@@ -19,6 +21,11 @@ class SQLGenerator:
     def generate(self, analyzed_query):
         """Generate SQL from analyzed query components."""
         params = {}
+
+        # Generate the WITH clause if present
+        with_clause = generate_with(
+            analyzed_query.get("with_ctes", [])
+        )
 
         # Generate each clause
         select_clause = generate_select(
@@ -51,6 +58,7 @@ class SQLGenerator:
 
         # Build final SQL
         sql_parts = [
+            with_clause,  # Add this line
             select_clause,
             from_clause,
             join_clause,
