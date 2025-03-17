@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from discovery.metadata_inspector import MetadataInspector
 from query.where_group import WhereGroup
+from sql.hints import hints
 from .cte import CommonTableExpression
 from .set_operation import SetOperationType, SetOperation
 from ..sql.functions import fn
