@@ -1,8 +1,10 @@
 """Core query builder interface for PyQueryBuilder."""
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from discovery.snowflake.metadata_inspector import MetadataInspector
+from discovery.metadata_inspector import MetadataInspector
 from query.where_group import WhereGroup
+from .cte import CommonTableExpression
+from .set_operation import SetOperationType, SetOperation
 from ..sql.functions import fn
 
 
@@ -12,12 +14,39 @@ class QueryBuilder:
     # Add the functions namespace as a class attribute for easy access
     fn = fn
 
+    def __init__(self, schema_registry, connector=None):
+        """Initialize the QueryBuilder with schema information.
+
+        Args:
+            schema_registry: Registry containing schema metadata
+            connector: Optional database connector for executing queries
+        """
+        self._schema_registry = schema_registry
+        self._connector = connector
+        # Add this for hints support
+        self._hints = []
+
+        # Query components
+        self._select_fields = []
+        self._from_table = None
+        self._from_subquery = None
+        self._joins = []
+        self._where_conditions = []
+        self._where_groups = []
+        self._group_by = []
+        self._order_by = []
+        self._limit = None
+        self._offset = None
+
+        # CTE support
+        self._with_ctes = []
+
     @classmethod
     def from_snowflake(cls, account, user, password,
                        warehouse, database, schema=None, **options):
         """Initialize with auto-discovered schema from Snowflake."""
         from ..discovery.snowflake.connector import SnowflakeConnector
-        #from ..discovery.inspector import MetadataInspector
+        # from ..discovery.inspector import MetadataInspector
         from ..schema.registry import SchemaRegistry
 
         connector = SnowflakeConnector(
@@ -142,7 +171,10 @@ class QueryBuilder:
             group_by=self._group_by,
             order_by=self._order_by,
             limit=self._limit,
-            offset=self._offset
+            offset=self._offset,
+            with_ctes=self._with_ctes,
+            hints=self._hints  # Add this line
+
         )
 
         # Generate SQL
@@ -376,6 +408,94 @@ class QueryBuilder:
         """
         return SetOperation(self, SetOperationType.MINUS, other_query)
 
+    def with_(self, query, name: str) -> "QueryBuilder":
+        """Add a Common Table Expression (CTE) to the query.
 
+        Args:
+            query: QueryBuilder instance to use as the CTE
+            name: Name for this CTE
 
+        Returns:
+            Self for method chaining
+        """
+        cte = CommonTableExpression(query, name)
+        self._with_ctes.append(cte)
+        return self
 
+    def with_recursive(self, query, name: str) -> "QueryBuilder":
+        """Add a recursive Common Table Expression (CTE) to the query.
+
+        Args:
+            query: QueryBuilder instance to use as the CTE
+            name: Name for this CTE
+
+        Returns:
+            Self for method chaining
+        """
+        cte = CommonTableExpression(query, name, recursive=True)
+        self._with_ctes.append(cte)
+        return self
+
+    def with_hint(self, hint) -> "QueryBuilder":
+        """Add a database-specific hint to the query.
+
+        Args:
+            hint: QueryHint instance
+
+        Returns:
+            Self for method chaining
+        """
+        self._hints.append(hint)
+        return self
+
+    def with_query_tag(self, tag: str) -> "QueryBuilder":
+        """Add a query tag hint.
+
+        Args:
+            tag: Query tag value
+
+        Returns:
+            Self for method chaining
+        """
+        return self.with_hint(hints.query_tag(tag))
+
+    def with_warehouse(self, warehouse: str) -> "QueryBuilder":
+        """Specify a warehouse for this query.
+
+        Args:
+            warehouse: Warehouse name
+
+        Returns:
+            Self for method chaining
+        """
+        return self.with_hint(hints.use_warehouse(warehouse))
+
+    def with_auto_cluster(self, enabled: bool = True) -> "QueryBuilder":
+        """Add an auto-cluster hint.
+
+        Args:
+            enabled: Whether auto-clustering is enabled
+
+        Returns:
+            Self for method chaining
+        """
+        return self.with_hint(hints.auto_cluster(enabled))
+
+    def with_streamline(self) -> "QueryBuilder":
+        """Add a streamline hint for query optimization.
+
+        Returns:
+            Self for method chaining
+        """
+        return self.with_hint(hints.streamline())
+
+    def with_comment(self, text: str) -> "QueryBuilder":
+        """Add a SQL comment to the query.
+
+        Args:
+            text: Comment text
+
+        Returns:
+            Self for method chaining
+        """
+        return self.with_hint(hints.comment(text))
