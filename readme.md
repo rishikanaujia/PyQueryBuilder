@@ -11,10 +11,11 @@ pyquerybuilder/
 │   ├── builder.py             # Main QueryBuilder class
 │   ├── executor.py            # Query execution handling
 │   ├── subquery.py            # Subquery support
-│   └── set_operation.py       # Set operations (UNION, INTERSECT, etc.)
+│   ├── set_operation.py       # Set operations (UNION, INTERSECT, etc.)
+│   └── cte.py                 # Common Table Expressions (WITH)
 ├── discovery/
 │   ├── __init__.py            # Discovery module exports
-│   ├── metadata_inspector.py  # Main schema discovery coordinator
+│   ├── metadata_inspector.py  # Schema discovery coordinator
 │   └── snowflake/
 │       ├── __init__.py
 │       ├── connector.py       # Snowflake connection management
@@ -47,6 +48,10 @@ pyquerybuilder/
 │   │   ├── string_functions.py # String manipulation
 │   │   ├── window_functions.py # Window functions (RANK, etc.)
 │   │   └── window_frames.py   # Window frame definitions
+│   ├── hints/
+│   │   ├── __init__.py        # Hint factory and exports
+│   │   ├── base_hint.py       # Base QueryHint class
+│   │   └── snowflake_hints.py # Snowflake-specific hints
 │   └── generators/
 │       ├── __init__.py
 │       ├── select_generator.py # SELECT clause generation
@@ -54,7 +59,9 @@ pyquerybuilder/
 │       ├── join_generator.py  # JOIN clause generation
 │       ├── where_generator.py # WHERE clause generation
 │       ├── group_generator.py # GROUP BY generation
-│       └── order_generator.py # ORDER BY generation
+│       ├── order_generator.py # ORDER BY generation
+│       ├── with_generator.py  # WITH clause generation
+│       └── hint_generator.py  # Optimization hints generation
 └── utils/
     ├── __init__.py            # Utilities exports
     ├── errors.py              # Error handling classes

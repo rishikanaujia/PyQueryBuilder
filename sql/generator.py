@@ -1,12 +1,14 @@
 # pyquerybuilder/sql/generator.py
 """Generator for producing SQL from analyzed queries."""
-
+from .generators.hint_generator import generate_hints
 from .generators.select_generator import generate_select
 from .generators.from_generator import generate_from
 from .generators.join_generator import generate_joins
 from .generators.where_generator import generate_where
 from .generators.group_generator import generate_group_by
 from .generators.order_generator import generate_order_by
+from .generators.with_generator import generate_with
+
 
 
 class SQLGenerator:
@@ -19,6 +21,16 @@ class SQLGenerator:
     def generate(self, analyzed_query):
         """Generate SQL from analyzed query components."""
         params = {}
+
+        # Generate hints if present
+        hints_sql = generate_hints(
+            analyzed_query.get("hints", [])
+        )
+
+        # Generate the WITH clause if present
+        with_clause = generate_with(
+            analyzed_query.get("with_ctes", [])
+        )
 
         # Generate each clause
         select_clause = generate_select(
@@ -49,15 +61,33 @@ class SQLGenerator:
             analyzed_query.get("order_by", [])
         )
 
-        # Build final SQL
-        sql_parts = [
-            select_clause,
-            from_clause,
-            join_clause,
-            where_clause,
-            group_clause,
-            order_clause
-        ]
+        # Build final SQL with hints
+        if hints_sql and select_clause:
+            # Insert hints right after SELECT
+            select_with_hints = select_clause.replace("SELECT", f"SELECT {hints_sql}", 1)
+
+            sql_parts = [
+                with_clause,  # Add this line
+                select_with_hints,
+                select_clause,
+                from_clause,
+                join_clause,
+                where_clause,
+                group_clause,
+                order_clause
+            ]
+
+        else:
+            # Build final SQL
+            sql_parts = [
+                with_clause,  # Add this line
+                select_clause,
+                from_clause,
+                join_clause,
+                where_clause,
+                group_clause,
+                order_clause
+            ]
 
         sql = " ".join(part for part in sql_parts if part)
 
